@@ -1,0 +1,7 @@
+.vagrant
+*.log
+*.tmp
+*.ini
+roadmap.txt
+test.sh
+ur_uac.csv
