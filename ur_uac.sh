@@ -94,12 +94,17 @@ fi
 
 # Current period e.g. 03-06
 prd_current=$(crudini --get $var_file '' prd_current)
+if [ $prd_current"empty" = "empty" ]; then
+    $prd_current="empty"
+fi
+
 if [ $prd_current != $prd_start"-"$prd_end ]; then
 	# If last period is different, reset the error counter
 	counter_err_3h_log=0
 	prd_current=$prd_start"-"$prd_end
 fi
 
+# Current error counter 
 counter_err_curr=$(crudini --get $var_file '' counter_err_curr)
 if [ $counter_err_curr"empty" = "empty" ]; then
     counter_err_curr=0
