@@ -95,7 +95,7 @@ fi
 # Current period e.g. 03-06
 prd_current=$(crudini --get $var_file '' prd_current)
 if [ $prd_current"empty" = "empty" ]; then
-    $prd_current="empty"
+    prd_current=empty
 fi
 
 if [ $prd_current != $prd_start"-"$prd_end ]; then
