@@ -131,10 +131,11 @@ sudo /home/vagrant/sipp-3.5.1/sipp -sf $sipp_script 5901.ur.mundio.com \
   -trace_err -error_file $tmp_err_file -error_overwrite true \
   -trace_msg -message_file $tmp_msg_file -message_overwrite true \
   -trace_shortmsg -shortmessage_file $tmp_sms_file -shortmessage_overwrite true \
-  -trace_stat \
-  -trace_rtt
 
-#  -stf $tmp_stat_file 
+
+#  -trace_stat \
+#  -trace_rtt \
+#  -stf $tmp_stat_file \
 
 exit_code="${?}"
 
