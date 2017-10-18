@@ -48,7 +48,7 @@ machine_ip=10.0.2.15
 #-----------------------------------------------------------------------
 # Init report file names
 
-now_hour=$(echo $(date +%H) | n 's/^0//g')
+now_hour=$(echo $(date +%H) | sed 's/^0//g')
 # now_hour=0
 
 # Hour the period starts e.g 03
