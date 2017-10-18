@@ -324,6 +324,7 @@ fi
 
 #-----------------------------------------------------------------------
 # Update the Init file
+echo "# Temporary file accessed by callmonit during the calls" > $var_file
 echo "counter_call="$counter_call >> $var_file
 echo "counter_ok="$counter_ok >> $var_file
 echo "counter_err_curr="$counter_err_curr >> $var_file
