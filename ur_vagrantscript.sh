@@ -2,7 +2,8 @@
 
 sudo yum -y update
 
-sudo echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+# sudo echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+sudo bash -c "echo 'nameserver 8.8.8.8' > /etc/resolv.test"
 
 sudo timedatectl set-timezone Europe/London
 
