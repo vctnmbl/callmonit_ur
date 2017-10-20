@@ -166,8 +166,8 @@
     ]]>
   </send>
 
-  <recv response="200" crlf="true" next="10">
-  </recv>
+  <recv response="481" optional="true" crlf="true" next="10"/>
+  <recv response="200" crlf="true" next="10"/>
 
   <!-- ============================================================================================ -->
   <!-- TIMEOUT and cancel the call -->
