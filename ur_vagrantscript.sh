@@ -2,7 +2,7 @@
 
 sudo yum -y update
 
-sudo echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+sudo bash -c "echo 'nameserver 8.8.8.8' >> /etc/resolv.conf"
 
 sudo timedatectl set-timezone Europe/London
 
@@ -34,13 +34,35 @@ yum install -y lksctp-tools-devel.i686 -y >> /vagrant/provision-script.log 2>&1
 wget https://github.com/SIPp/sipp/releases/download/v3.5.1/sipp-3.5.1.tar.gz >> /vagrant/provision-script.log 2>&1
 tar zvxf sipp-3.5.1.tar.gz >> /vagrant/provision-script.log 2>&1
 
-cd sipp-3.5.1 >> /vagrant/provision-script.log 2>&1
+cd /home/vagrant/sipp-3.5.1
 sudo ./configure --with-sctp --with-pcap >> /vagrant/provision-script.log 2>&1
 
 make >> /vagrant/provision-script.log 2>&1
 
+cd /home/vagrant/
 
-# ======================= Provisioning SIPp ==============================
+# ======================= Provisioning PJSIP ==============================
+
+sudo yum install -y alsa-lib-devel alsa-lib  >> /vagrant/provision-script.log 2>&1
+sudo yum install -y jack-audio-connection-kit >> /vagrant/provision-script.log 2>&1
+sudo yum install -y jack-audio-connection-kit-devel >> /vagrant/provision-script.log 2>&1
+sudo yum install -y pulseaudio-libs-devel  
+
+wget http://www.pjsip.org/release/2.7/pjproject-2.7.tar.bz2  >> /vagrant/provision-script.log 2>&1
+tar jvxf pjproject-2.7.tar.bz2  >> /vagrant/provision-script.log 2>&1
+
+cd /home/vagrant/pjproject-2.7
+sudo ./configure  >> /vagrant/provision-script.log 2>&1
+sudo make dep  >> /vagrant/provision-script.log 2>&1
+sudo make clean  >> /vagrant/provision-script.log 2>&1
+sudo make  >> /vagrant/provision-script.log 2>&1
+sudo make install  >> /vagrant/provision-script.log 2>&1
+
+/home/vagrant/pjproject-2.7/pjsip-apps/bin/pjsua-x86_64-unknown-linux-gnu -version >> /vagrant/provision-script.log 2>&1
+
+cd /home/vagrant/
+
+# ======================= Wrapping ==============================
 
 echo "ERROR LOG:" > /vagrant/provision-error.log
 grep -in "error" /vagrant/provision-script.log >> /vagrant/provision-error.log

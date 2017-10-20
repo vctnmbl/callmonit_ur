@@ -3,5 +3,5 @@
 *.tmp
 *.ini
 roadmap.txt
-test.sh
+test*.sh
 *.csv
