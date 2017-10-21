@@ -21,7 +21,7 @@ fi
 
 sipp_script=/vagrant/ur_uac.xml
 now_date=$(date +%Y%m%d)
-log_date=$(date +%F" "%R)
+log_date=$(date +%F" "%H":"%M":"%S)
 
 log_directory=/vagrant/
 
@@ -165,7 +165,7 @@ if [ $exit_code -eq 0 ]; then
 			error_end=$(echo $(date +%Hh%M"_"%d"-"%m"-"%Y))
 
 			# Send email if the service is restored
-			email_subject=$(echo "[URING] Service Restored at " )$error_end
+			email_subject=$(echo "[UR] Service Restored at " )$error_end
 
 			echo $error_start > $body_email
 			email_body
@@ -244,7 +244,7 @@ else
 			
 			let counter_to_display=$counter_notif-1
 
-			email_subject=$(echo "[URING] ERROR ("$counter_to_display"). Since " )$error_start
+			email_subject=$(echo "[UR] ERROR ("$counter_to_display"). Since " )$error_start
 			
 			email_body
 
@@ -304,11 +304,11 @@ if [ ! -e $prev_rpt ]; then
         # Build the email subject
 		if [ $nb_errors -eq 0 ]; then
 			sudo echo "Nb of Errors : "$nb_errors >> $prev_rpt
-			email_subject=$(echo "[URING] Summary Report "$prd_prev"h-"$prd_start"h.")
+			email_subject=$(echo "[UR] Report "$prd_prev"h-"$prd_start"h.")
 
 		else
 			sudo echo "Nb of Errors : "$nb_errors" (see attachment)" >> $prev_rpt
-			email_subject=$(echo "[URING] Summary Report "$prd_prev"h-"$prd_start"h. Nb Errors: "$nb_errors)"."
+			email_subject=$(echo "[UR] Report "$prd_prev"h-"$prd_start"h. Nb Errors: "$nb_errors)"."
 		fi
 
         # Send the email
