@@ -34,14 +34,17 @@ fi
     --duration=20 \
     --app-log-level=2 \
     --log-level=2 \
-    --play-file=/vagrant/file02.wav \
-    --playback-dev=0 \
-    --dis-codec=speex/16000 \
-    --dis-codec=speex/8000 \
-    --dis-codec=speex/32000 \
-    --dis-codec=iLBC/8000 \
-    --dis-codec=GSM/8000 \
-    --dis-codec=G722/16000 \
+    --null-audio \
+
+
+#    --play-file=/vagrant/file02.wav \
+#    --playback-dev=0 \
+#    --dis-codec=speex/16000 \
+#    --dis-codec=speex/8000 \
+#    --dis-codec=speex/32000 \
+#    --dis-codec=iLBC/8000 \
+#    --dis-codec=GSM/8000 \
+#    --dis-codec=G722/16000 \
 
 #    --log-file=/vagrant/pjsua.log \
 
