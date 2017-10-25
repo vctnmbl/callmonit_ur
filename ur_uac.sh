@@ -2,7 +2,8 @@
 
 #-----------------------------------------------------------------------
 # Get the parameters from INI file
-ini_file=/vagrant/ur_uac.ini
+
+ini_file=/vagrant/ur_callmonit.ini
 
 # The extension number to call to for testing
 target_number=$(crudini --get $ini_file '' target_number)
@@ -17,7 +18,21 @@ if [[ $target_mail"empty" == "empty" ]]; then
     echo "Error: Parameter 'target_mail' is not defined in file: '"$ini_file"'"
 	exit 99
 fi
+
+caller_number=$(crudini --get $ini_file '' caller_number)
+if [ $caller_number"empty" = "empty" ]; then
+    echo "Error: Parameter 'caller_number' is not defined in file: '"$ini_file"'"
+	exit 99
+fi
+
+caller_password=$(crudini --get $ini_file '' caller_password)
+if [ $caller_password"empty" = "empty" ]; then
+    echo "Error: Parameter 'caller_password' is not defined in file: '"$ini_file"'"
+	exit 99
+fi
+
 #-----------------------------------------------------------------------
+# Initialize the variables
 
 sipp_script=/vagrant/ur_uac.xml
 now_date=$(date +%Y%m%d)
@@ -34,7 +49,8 @@ tmp_stat_file=$log_directory"stat.tmp"
 
 var_file=$log_directory"ur_uacvar.tmp"
 body_email=$log_directory"email_body.tmp"
-credential_file=$log_directory"ur_uac.csv"
+# credential_file=$log_directory"ur_uac.csv"
+credential_file=$log_directory"ur_uac_csv.tmp"
 
 # Error number/ID in during the 3h period
 error_id_3h_log=0
@@ -46,7 +62,13 @@ restored_counter=5
 machine_ip=10.0.2.15
 
 #-----------------------------------------------------------------------
-# Init report file names
+# Creates a credential file (CSV) to be used by SIPp for the SIP Challenge
+
+echo "SEQUENTIAL" > $credential_file
+echo $caller_number";[authentication username="$caller_number" password="$caller_password"]" >> $credential_file
+
+#-----------------------------------------------------------------------
+# Initialise report file names
 
 now_hour=$(echo $(date +%H) | sed 's/^0//g')
 # now_hour=0
@@ -85,7 +107,7 @@ function email_body {
 }
 
 #-----------------------------------------------------------------------
-# Initialise counters and variables from INI file
+# Initialise counters and variables from variables temporary file
 
 counter_err_3h_log=$(crudini --get $var_file '' counter_err_3h_log)
 if [ $counter_err_3h_log"empty" = "empty" ]; then
@@ -127,7 +149,9 @@ if [ $counter_call"empty" = "empty" ]; then
     counter_call=0
 fi
 
-# Making the test call
+
+#-----------------------------------------------------------------------
+# Start the call
 sudo /home/vagrant/sipp-3.5.1/sipp -sf $sipp_script 5901.ur.mundio.com \
   -s $target_number \
   -m 1 \
@@ -340,6 +364,10 @@ echo "prd_current="$prd_current >> $var_file
 
 # Debuging Variables
 echo "==============================================="
+echo "xxx - Debug caller_number     :" $caller_number
+echo "xxx - Debug target_number     :" $target_number
+echo "."
+
 echo "xxx - Debug counter_call      :" $counter_call       # Nb of test calls after the 1st error. Used to decide when to send error email
 echo "xxx - Debug counter_ok        :" $counter_ok         # Nb of success test calls. Used to decide when to send restored service email
 echo "xxx - Debug counter_err_curr  :" $counter_err_curr      # Nb of error calls
@@ -348,6 +376,7 @@ echo "xxx - Debug error_to_send     :" $error_to_send      # 3^counter_notif = T
 echo "xxx - Debug error_start       :" $error_start        # Date of first error
 echo "."
 echo "xxx - Debug email_subject     :" $email_subject
+echo "xxx - Debug ini_file          :" $ini_file
 echo "xxx - Debug call_3h_log       :" $call_3h_log
 echo "xxx - Debug err_3h_log        :" $err_3h_log
 echo "xxx - Debug rpt_3h_log        :" $rpt_3h_log
