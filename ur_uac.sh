@@ -36,16 +36,22 @@ fi
 
 sipp_script=/vagrant/ur_uac.xml
 now_date=$(date +%Y%m%d)
-log_date=$(date +%F" "%H":"%M":"%S)
+now_time=$(date +%F" "%H":"%M":"%S)
 
 log_directory=/vagrant/
 
 curr_call_file=$log_directory"call.log"
 
 tmp_err_file=$log_directory"error.tmp"
+> $tmp_err_file
+
 tmp_msg_file=$log_directory"msg.tmp"
+> $tmp_msg_file
+
 tmp_sms_file=$log_directory"shortmsg.tmp"
-tmp_stat_file=$log_directory"stat.tmp"
+> $tmp_sms_file
+
+# tmp_stat_file=$log_directory"stat.tmp"
 
 var_file=$log_directory"ur_uacvar.tmp"
 body_email=$log_directory"email_body.tmp"
@@ -61,8 +67,10 @@ restored_counter=5
 # The local IP addressof this machine
 machine_ip=10.0.2.15
 
+result=$now_time"Call aborted"
+
 #-----------------------------------------------------------------------
-# Creates a credential file (CSV) to be used by SIPp for the SIP Challenge
+# Creates a credential file (CSV) to be used by SIPp for the SIP Challenge in ur_uac.xml
 
 echo "SEQUENTIAL" > $credential_file
 echo $caller_number";[authentication username="$caller_number" password="$caller_password"]" >> $credential_file
@@ -77,7 +85,7 @@ now_hour=$(echo $(date +%H) | sed 's/^0//g')
 let prd_start=$(echo $now_hour/3)*3
 prd_start=$(printf "%02d\n" $prd_start)
 
-# Hour the perido ends e.g 06
+# Hour the period ends e.g 06
 let prd_end=$(echo $(echo $now_hour/3)+1)
 let prd_end=$prd_end*3
 prd_end=$(printf "%02d\n" $prd_end)
@@ -168,14 +176,17 @@ sudo /home/vagrant/sipp-3.5.1/sipp -sf $sipp_script 5901.ur.mundio.com \
 
 exit_code="${?}"
 
+# exit_code=99
 
 let counter_call++
 
 if [ $exit_code -eq 0 ]; then
-	echo $log_date "==> Call test OK" >> $curr_call_file
-	echo $log_date "==> Call test OK" >> $call_3h_log
+    result=$now_time" ==> Call test OK"
+    
+	echo $result >> $curr_call_file
+	echo $result >> $call_3h_log
 	echo "==============================================="
-	echo $log_date "==> Call test OK"
+	echo $now_time "==> Call test OK"
 
 	# Service is restored if there are X nb of consecutive OK 
 	let counter_ok++
@@ -189,7 +200,8 @@ if [ $exit_code -eq 0 ]; then
 			error_end=$(echo $(date +%Hh%M"_"%d"-"%m"-"%Y))
 
 			# Send email if the service is restored
-			email_subject=$(echo "[UR] Service Restored at " )$error_end
+			# email_subject=$(echo "[UR] Service Restored at " )$error_end
+            email_subject=$(echo "[UR] Service is Restored" )
 
 			echo $error_start > $body_email
 			email_body
@@ -197,9 +209,9 @@ if [ $exit_code -eq 0 ]; then
 			# sudo mutt -s "$email_subject" -- $target_mail < $body_email
             sudo mutt -s "$email_subject" -a $err_3h_log $call_3h_log -- $target_mail < $body_email
 
-			echo $log_date "==> Service restored notification is sent" >> $curr_call_file
-			echo $log_date "==> Service restored notification is sent" >> $call_3h_log
-            echo $log_date "==> Service restored notification is sent" 
+			echo $now_time "==> Service restored notification is sent" >> $curr_call_file
+			echo $now_time "==> Service restored notification is sent" >> $call_3h_log
+            echo $now_time "==> Service restored notification is sent" 
 
             > $curr_call_file
 
@@ -220,64 +232,105 @@ else
 	
 	# This is the first error
 	if [ $counter_err_curr -eq 1 ]; then
-		error_start=$(echo $(date +%Hh%M"_"%d"-"%m"-"%Y))
-		counter_call=0
+		# error_start=$(echo $(date +%Hh%M"_"%d"-"%m"-"%Y))
+        error_start=$(echo $(date +%Y-%m-%d" "%H:%M:%S))
+		counter_call=1
 		> $curr_call_file
 	fi
 
     # Record it in Call Log
-	echo $log_date "==> Call test ERROR (error no: "$counter_err_3h_log")" >> $curr_call_file
-	echo $log_date "==> Call test ERROR (error no: "$counter_err_3h_log")" >> $call_3h_log
+    result=$now_time" ==> Call test ERROR (error no: "$counter_err_3h_log")"
+    
+	echo $result >> $curr_call_file
+	echo $result >> $call_3h_log
 	echo "==============================================="
-	echo $log_date "==> Call test ERROR"
+	echo $now_time "==> Call test ERROR"
     
     # Error appended to the 3-hours-error-log
 	echo "================================================================" >> $err_3h_log
 	echo "= ERROR No: "$counter_err_3h_log >> $err_3h_log
 	echo "================================================================" >> $err_3h_log
-    cat $tmp_err_file >> $err_3h_log
-	
+    cat $tmp_err_file | sed -n '/\t/p' >> $err_3h_log
+
 	# SIP Messages appended to the 3-hours-error-log
 	echo "----------------------------------------------------------------" >> $err_3h_log
 	echo "- SIP Messages: (error no: "$counter_err_3h_log")" >> $err_3h_log
 	echo "----------------------------------------------------------------" >> $err_3h_log
     cat $tmp_sms_file >> $err_3h_log
 
-	# Detail SIP Messages appended to the 3-hours-error-log
-	echo "----------------------------------------------------------------" >> $err_3h_log
-	echo "- Detail SIP Messages: (error no: "$counter_err_3h_log")" >> $err_3h_log
-	echo "----------------------------------------------------------------" >> $err_3h_log
-    cat $tmp_msg_file >> $err_3h_log
+    # ------------------------------------------------------------------------
+    # To send notification on minutes 3, 9, 27, 81 ... etc
+    error_start_sec=$(date -d "$error_start" +%s)
+    error_now_sec=$(date -d "$now_time" +%s)
+    sec_from_start=$((error_now_sec-error_start_sec))
+    sec_to_send=$((3**counter_notif*60))
+    sec_next_to_send=$((3**(counter_notif+1)*60))
 
+    # Reset from start if the variable saved in the file is not synched
+    if [ $sec_from_start -gt sec_next_to_send ]; then
+        counter_err_curr=1
+        counter_notif=0
+        #error_to_send=1
+    fi
+
+    # Skip notification if this the first error
+	if [ $counter_notif -eq 0 ]; then
+        let counter_notif++
+    else
+        # Time to send notification
+        if [ $sec_from_start -gt $sec_to_send ]; then
+            let counter_notif++
+
+	 		let counter_to_display=$counter_notif-1
+     
+	 		# email_subject=$(echo "[UR] ERROR ("$counter_to_display"). Since " )$error_start
+            email_subject=$(echo "[UR] ERROR ("$counter_to_display")" )
+	 		
+	 		email_body
+     
+	 		sudo mutt -s "$email_subject" -a $err_3h_log $call_3h_log -- $target_mail < $body_email
+	 		
+	 		echo $now_time "==> Error notification is sent" >> $curr_call_file
+	 		echo $now_time "==> Error notification is sent"
+        fi
+	fi
+
+	# Detail SIP Messages appended to the 3-hours-error-log
+	# echo "----------------------------------------------------------------" >> $err_3h_log
+	# echo "- Detail SIP Messages: (error no: "$counter_err_3h_log")" >> $err_3h_log
+	# echo "----------------------------------------------------------------" >> $err_3h_log
+    # cat $tmp_msg_file >> $err_3h_log
 	
 	# To send notification on error nb 3, 9, 27, 81 ...
-	error_to_send=$((3**counter_notif))
-	
+	# error_to_send=$((3**counter_notif))
+
 	# Reset from start if the variable saved in the file is not synched
-	if [ $counter_err_curr -gt $error_to_send ]; then
-		counter_err_curr=1
-		counter_notif=0
-		error_to_send=1
-	fi
-	
-	if [ $counter_err_curr -eq $error_to_send ]; then
-		let counter_notif++
-	
-		# Do not send if this is the first error
-		if [ $counter_err_curr -gt 1 ]; then
-			
-			let counter_to_display=$counter_notif-1
+	# if [ $counter_err_curr -gt $error_to_send ]; then
+	# 	counter_err_curr=1
+	# 	counter_notif=1
+	# 	error_to_send=1
+	# fi
+	# 
+	# if [ $counter_err_curr -eq $error_to_send ]; then
+	# 	let counter_notif++
+	# 
+	# 	# Do not send if this is the first error
+	# 	if [ $counter_err_curr -gt 1 ]; then
+	# 		
+	# 		let counter_to_display=$counter_notif-1
+    # 
+	# 		email_subject=$(echo "[UR] ERROR ("$counter_to_display"). Since " )$error_start
+	# 		
+	# 		email_body
+    # 
+	# 		sudo mutt -s "$email_subject" -a $err_3h_log $call_3h_log -- $target_mail < $body_email
+	# 		
+	# 		echo $now_time "==> Error notification is sent" >> $curr_call_file
+	# 		echo $now_time "==> Error notification is sent"
+	# 	fi
+	# fi
+    
 
-			email_subject=$(echo "[UR] ERROR ("$counter_to_display"). Since " )$error_start
-			
-			email_body
-
-			sudo mutt -s "$email_subject" -a $err_3h_log $call_3h_log -- $target_mail < $body_email
-			
-			echo $log_date "==> Error notification is sent" >> $curr_call_file
-			echo $log_date "==> Error notification is sent"
-		fi
-	fi
 fi
 
 #-----------------------------------------------------------------------
@@ -312,12 +365,14 @@ if [ ! -e $prev_rpt ]; then
 	prev_cal=$(echo $log_directory"ur_cal_"$prev_date"_"$prd_prev"_"$prd_start".log")
 
 	if [ ! -e "$prev_cal" ]; then
-		echo $log_date "==> There is No Log Report to send."
-		echo $log_date "==> There is No Log Report to send." >> $call_3h_log
-		echo $log_date "==> There is No Log Report to send." >> $prev_rpt
+		echo $now_time "==> There is No Log Report to send."
+		echo $now_time "==> There is No Log Report to send." >> $call_3h_log
+		echo $now_time "==> There is No Log Report to send." >> $prev_rpt
 	else
-		echo $log_date "==> Sending Report"
-		echo $log_date "==> Sending Report" >> $call_3h_log
+		echo $now_time "==> Sending Report"
+		echo $now_time "==> Sending Report" >> $call_3h_log
+        
+        email_subject=$(echo "[UR] Report")
 
 		prev_err=$(echo $log_directory"ur_err_"$prev_date"_"$prd_prev"_"$prd_start".log")
 	
@@ -326,14 +381,14 @@ if [ ! -e $prev_rpt ]; then
 		nb_errors=$(cat $prev_cal | grep ERROR | wc -l)
 
         # Build the email subject
-		if [ $nb_errors -eq 0 ]; then
-			sudo echo "Nb of Errors : "$nb_errors >> $prev_rpt
-			email_subject=$(echo "[UR] Report "$prd_prev"h-"$prd_start"h.")
-
-		else
-			sudo echo "Nb of Errors : "$nb_errors" (see attachment)" >> $prev_rpt
-			email_subject=$(echo "[UR] Report "$prd_prev"h-"$prd_start"h. Nb Errors: "$nb_errors)"."
-		fi
+		# if [ $nb_errors -eq 0 ]; then
+		# 	sudo echo "Nb of Errors : "$nb_errors >> $prev_rpt
+		# 	 email_subject=$(echo "[UR] Report "$prd_prev"h-"$prd_start"h.")
+        # 
+		# else
+		# 	sudo echo "Nb of Errors : "$nb_errors" (see attachment)" >> $prev_rpt
+		# 	email_subject=$(echo "[UR] Report "$prd_prev"h-"$prd_start"h. Nb Errors: "$nb_errors)"."
+		# fi
 
         # Send the email
         if [ ! -e "$prev_err" ]; then
@@ -364,6 +419,15 @@ echo "prd_current="$prd_current >> $var_file
 
 # Debuging Variables
 echo "==============================================="
+echo "= SIP Messages"
+echo "==============================================="
+cat $tmp_sms_file | sed 's/^.*\tS\t.*CSeq.*\t/ A-->B: /g ; s/^.*\tR\t.*CSeq.*\t/ A<--B: /g ; s/ SIP\/2.0//g'
+
+echo "==============================================="
+cat $tmp_err_file | sed -n '/\t/p'
+echo "==============================================="
+echo $result
+echo "==============================================="
 echo "xxx - Debug caller_number     :" $caller_number
 echo "xxx - Debug target_number     :" $target_number
 echo "."
@@ -372,8 +436,14 @@ echo "xxx - Debug counter_call      :" $counter_call       # Nb of test calls af
 echo "xxx - Debug counter_ok        :" $counter_ok         # Nb of success test calls. Used to decide when to send restored service email
 echo "xxx - Debug counter_err_curr  :" $counter_err_curr      # Nb of error calls
 echo "xxx - Debug counter_notif     :" $counter_notif      # Nb of error notification sent
-echo "xxx - Debug error_to_send     :" $error_to_send      # 3^counter_notif = The number of error when the error notif is to send
+# echo "xxx - Debug error_to_send     :" $error_to_send      # 3^counter_notif = The number of error when the error notif is to send
 echo "xxx - Debug error_start       :" $error_start        # Date of first error
+echo "xxx - Debug error_start_sec   :" $error_start_sec
+echo "xxx - Debug now_time          :" $now_time
+echo "xxx - Debug error_now_sec     :" $error_now_sec
+echo "xxx - Debug sec_from_start    :" $sec_from_start
+echo "xxx - Debug sec_next_to_send  :" $sec_next_to_send
+echo "xxx - Debug sec_to_send       :" $sec_to_send
 echo "."
 echo "xxx - Debug email_subject     :" $email_subject
 echo "xxx - Debug ini_file          :" $ini_file
@@ -385,8 +455,9 @@ echo "xxx - Debug counter_err_3h_log:" $counter_err_3h_log
 echo "xxx - Debug prd_current       :" $prd_current
 echo "==============================================="
 
+
 # Kill all hung process of SIPp tool
 sudo ps -ef | sudo pkill -f sipp
 
-echo $log_date "==> Call Test completed-."
+echo $now_time "==> Call Test completed-."
 

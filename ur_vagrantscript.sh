@@ -2,7 +2,7 @@
 
 sudo yum -y update
 
-sudo bash -c "echo 'nameserver 8.8.8.8' >> /etc/resolv.conf"
+sudo bash -c "echo 'nameserver 8.8.8.8' > /etc/resolv.conf"
 
 sudo timedatectl set-timezone Europe/London
 
@@ -18,7 +18,7 @@ sudo yum repolist
 sudo yum install -y wget >> /vagrant/provision-script.log 2>&1
 sudo yum install -y net-tools >> /vagrant/provision-script.log 2>&1
 sudo yum install -y sharutils >> /vagrant/provision-script.log 2>&1
-# sudo yum install -y git >> /vagrant/provision-script.log 2>&1
+sudo yum install -y git >> /vagrant/provision-script.log 2>&1
 sudo yum install -y crudini >> /vagrant/provision-script.log 2>&1
 sudo yum install -y mutt >> /vagrant/provision-script.log 2>&1
 
