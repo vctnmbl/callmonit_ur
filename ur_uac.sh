@@ -267,7 +267,7 @@ else
     sec_next_to_send=$((3**(counter_notif+1)*60))
 
     # Reset from start if the variable saved in the file is not synched
-    if [ $sec_from_start -gt sec_next_to_send ]; then
+    if [ $sec_from_start -gt $sec_next_to_send ]; then
         counter_err_curr=1
         counter_notif=0
         #error_to_send=1
