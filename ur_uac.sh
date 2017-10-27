@@ -379,7 +379,8 @@ if [ ! -e $prev_rpt ]; then
 		sudo echo "Nb of Calls  : "$(cat $prev_cal | wc -l)  >> $prev_rpt
 	
 		nb_errors=$(cat $prev_cal | grep ERROR | wc -l)
-
+		sudo echo "Nb of Errors : "$nb_errors >> $prev_rpt
+        
         # Build the email subject
 		# if [ $nb_errors -eq 0 ]; then
 		# 	sudo echo "Nb of Errors : "$nb_errors >> $prev_rpt
