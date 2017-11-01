@@ -16,7 +16,7 @@ sudo yum repolist
 
 # ======================= Provisioning various tools ==============================
 sudo yum install -y wget >> /vagrant/provision-script.log 2>&1
-sudo yum install -y net-tools >> /vagrant/provision-script.log 2>&1
+# sudo yum install -y net-tools >> /vagrant/provision-script.log 2>&1
 sudo yum install -y sharutils >> /vagrant/provision-script.log 2>&1
 sudo yum install -y git >> /vagrant/provision-script.log 2>&1
 sudo yum install -y crudini >> /vagrant/provision-script.log 2>&1

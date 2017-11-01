@@ -4,27 +4,37 @@
 # Using this infinite loop instead of crontab
 while :
 do
-    # Number of seconds before each test session
-    timer=10
-
     # set to 1 to display the variables
     debug_flag=1
-  
-    clear
+    #-----------------------------------------------------------------------
+    # Initialize the variables
     
+    ini_file=/vagrant/ur_callmonit.ini
+    sipp_script=/vagrant/ur_uac.xml
+    now_date=$(date +%Y%m%d)
+    now_time=$(date +%F" "%H":"%M":"%S)
+    
+    log_directory=/vagrant/
+    error_end=
+    body_email=
+    error_start=
+    caller=
+    password=
+    target=
+    curr_call_file=
+  
     #-----------------------------------------------------------------------
     # Get the parameters from INI file
     
-    ini_file=/vagrant/ur_callmonit.ini
-    
-    
-    uac=($(crudini --get $ini_file '' clients))
-    pwd=($(crudini --get $ini_file '' passwords))
-    scenario=($(crudini --get $ini_file '' scenarios))
+    uac=($(crudini --get $ini_file 'callers' clients))
+    pwd=($(crudini --get $ini_file 'callers' passwords))
+    scenario=($(crudini --get $ini_file 'callers' scenarios))
+    svr=($(crudini --get $ini_file 'callers' servers))
     
     nb_uac=${#uac[*]}
     nb_pwd=${#pwd[*]}
     nb_scenario=${#scenario[*]}
+    nb_svr=${#svr[*]}
     
     if [ $nb_uac -eq 0 ]; then
         echo ERROR: \"clients\" parameter is not defined in \"$ini_file\"
@@ -40,37 +50,26 @@ do
         echo ERROR: \"scenarios\" parameter is not defined in \"$ini_file\"
         exit 99
     fi
-    
-    # The extension number to call to for testing
-    # target_number=$(crudini --get $ini_file '' target_number)
-    # if [ $target_number"empty" = "empty" ]; then
-    #     echo "Error: Parameter 'target_number' is not defined in file: '"$ini_file"'"
-    # 	exit 99
-    # fi
-    
+
+    if [ $nb_svr -eq 0 ]; then
+        echo ERROR: \"servers\" parameter is not defined in \"$ini_file\"
+        exit 99
+    fi
+
+    # domain
+    domain=$(crudini --get $ini_file 'callers' domain)
+    if [[ $domain"empty" == "empty" ]]; then
+        echo "Error: Parameter 'domain' is not defined in file: '"$ini_file"'"
+        exit 99
+    fi
+
     # Email addresses to send the notification & report to
-    target_mail=$(crudini --get $ini_file '' target_mail)
+    target_mail=$(crudini --get $ini_file 'callers' target_mail)
     if [[ $target_mail"empty" == "empty" ]]; then
         echo "Error: Parameter 'target_mail' is not defined in file: '"$ini_file"'"
         exit 99
     fi
-    
-    #-----------------------------------------------------------------------
-    # Initialize the variables
-    
-    sipp_script=/vagrant/ur_uac.xml
-    now_date=$(date +%Y%m%d)
-    now_time=$(date +%F" "%H":"%M":"%S)
-    
-    log_directory=/vagrant/
-    error_end=
-    body_email=
-    error_start=
-    caller=
-    password=
-    target=
-    curr_call_file=
-    
+        
     #-----------------------------------------------------------------------
     # Create a body email to send
     function email_body {
@@ -89,34 +88,6 @@ do
         cat $curr_call_file >> $body_email
     }
 
-
-    # Display the title
-    echo "=========================================================="
-    echo "= CALL TEST"
-    echo "= Scenarios:"
-
-    # Display the scenarios
-    index=0
-    while [ $index -lt $nb_scenario ]
-    do
-        caller=${uac[$(echo ${scenario[$index]} | sed 's/->.*$//g')]}
-        target=${uac[$(echo ${scenario[$index]} | sed 's/^.*->//g')]}
-        
-        echo "=          Call No "$((index+1))": Caller:"$caller"    Target:"$target
-        let index++
-    done
-    echo "="
-    echo "= Next test session will run in:"
-
-    # Timer between each test
-    while [ $timer -gt 0 ]
-    do
-        echo -ne "=                                "$timer" seconds (Ctrl-C to quit)"\\r
-        sleep 1
-        let timer--
-    done
-
-
     #-----------------------------------------------------------------------
     # The Main Loop
     index=0
@@ -124,10 +95,69 @@ do
     # Main loop
     while [ $index -lt $nb_scenario ]
     do
+        clear
+
+        # Number of seconds before each test session
+        timer=9
+
+
         caller=${uac[$(echo ${scenario[$index]} | sed 's/->.*$//g')]}
         password=${pwd[$(echo ${scenario[$index]} | sed 's/->.*$//g')]}
-        target=${uac[$(echo ${scenario[$index]} | sed 's/^.*->//g')]}
+        target=${uac[$(echo ${scenario[$index]} | sed 's/^.*->//g; s/:.*$//g')]}
+        server=${svr[$(echo ${scenario[$index]} | sed 's/^.*://g')]}
+
+        # Display the title
+        echo "======================================================================="
+        echo "= CALL TEST"
+        echo "="
+        echo "= Domain: "$domain
+        echo "="
+        echo "=    Caller       Target             SBC"
+        echo "=    ------    -------------     --------------"
     
+        # Display the scenarios
+        disp_index=0
+        while [ $disp_index -lt $nb_scenario ]
+        do
+            disp_caller=${uac[$(echo ${scenario[$disp_index]} | sed 's/->.*$//g')]}
+            disp_target=${uac[$(echo ${scenario[$disp_index]} | sed 's/^.*->//g; s/:.*$//g')]}
+            disp_server=${svr[$(echo ${scenario[$disp_index]} | sed 's/^.*://g')]}
+            
+            if [ $index -eq $disp_index ]; then
+                echo "=  "$((disp_index+1))". "$disp_caller"          "$disp_target"            "$disp_server"    "$(tput rev) \<- Next to Run $(tput sgr0)
+            else
+                echo "=  "$((disp_index+1))". "$disp_caller"          "$disp_target"            "$disp_server
+            fi
+            let disp_index++
+        done
+        echo "="
+        echo "= 'q' to quit, or 'r' to run immediately"
+        echo ""
+        echo ""
+    
+        press_key=x
+    
+        # Timer between each test
+        while [ $timer -gt 0 ]
+        do
+            # echo -ne $(tput setab 7)" Next test will run in: "$(tput setaf 1)$(tput bold)    $timer"   seconds  "$(tput sgr0)\\r
+            echo -ne "=     "$(tput rev)" Next test will run in: "$(tput setaf 1)$(tput bold)  $timer  $(tput sgr0)$(tput rev)" seconds  "$(tput sgr0)\\r
+
+            read -t1 -s -n 1 press_key
+            case $press_key in
+                r) break;;
+                q) echo; exit
+            esac
+
+            let timer--
+        done
+        
+        echo 
+        echo
+        echo
+        echo -ne $(tput rev)"               Starting the call ...            "$(tput sgr0)
+        sleep 1
+        
         # ---------------------------------
         # Temporary files
         file_id="cm-"$caller"-"$target"-"
@@ -227,28 +257,28 @@ do
             counter_call=0
         fi
     
-    #-----------------------------------------------------------------------
-    # Start the call
-    sudo /home/vagrant/sipp-3.5.1/sipp -sf $sipp_script 5901.ur.mundio.com \
-    -s $target \
-    -m 1 \
-    -i $machine_ip \
-    -inf $credential_file \
-    -trace_err -error_file $tmp_err_file -error_overwrite true \
-    -trace_msg -message_file $tmp_msg_file -message_overwrite true \
-    -trace_shortmsg -shortmessage_file $tmp_sms_file -shortmessage_overwrite true \
-    
-    
+        #-----------------------------------------------------------------------
+        # Start the call
+        sudo /home/vagrant/sipp-3.5.1/sipp -sf $sipp_script $server \
+        -s $target \
+        -m 1 \
+        -i $machine_ip \
+        -inf $credential_file \
+        -key domain $domain \
+        -trace_err -error_file $tmp_err_file -error_overwrite true \
+        -trace_msg -message_file $tmp_msg_file -message_overwrite true \
+        -trace_shortmsg -shortmessage_file $tmp_sms_file -shortmessage_overwrite true \
+
         #  -trace_stat \
         #  -trace_rtt \
         #  -stf $tmp_stat_file \
-        
+
         exit_code="${?}"
-        
+
         # exit_code=99
-        
+
         let counter_call++
-        
+
         if [ $exit_code -eq 0 ]; then
             result=$now_time" ==> Call test OK"
             
