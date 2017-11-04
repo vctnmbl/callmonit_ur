@@ -12,7 +12,8 @@ do
     ini_file=/vagrant/ur_callmonit.ini
     sipp_script=/vagrant/ur_uac.xml
     now_date=$(date +%Y%m%d)
-    now_time=$(date +%F" "%H":"%M":"%S)
+    # now_time=$(date +%F" "%H":"%M":"%S)
+    now_time=$(date +%H":"%M":"%S)
     
     log_directory=/vagrant/
     error_end=
@@ -21,50 +22,37 @@ do
     caller=
     password=
     target=
+    descript=
     curr_call_file=
   
     #-----------------------------------------------------------------------
     # Get the parameters from INI file
-    
-    uac=($(crudini --get $ini_file 'callers' clients))
-    pwd=($(crudini --get $ini_file 'callers' passwords))
-    scenario=($(crudini --get $ini_file 'callers' scenarios))
-    svr=($(crudini --get $ini_file 'callers' servers))
-    
-    nb_uac=${#uac[*]}
-    nb_pwd=${#pwd[*]}
-    nb_scenario=${#scenario[*]}
-    nb_svr=${#svr[*]}
-    
-    if [ $nb_uac -eq 0 ]; then
-        echo ERROR: \"clients\" parameter is not defined in \"$ini_file\"
-        exit 99
-    fi
-    
-    if [ $nb_pwd -eq 0 ]; then
-        echo ERROR: \"passwords\" parameter is not defined in \"$ini_file\"
-        exit 99
-    fi
-    
-    if [ $nb_scenario -eq 0 ]; then
-        echo ERROR: \"scenarios\" parameter is not defined in \"$ini_file\"
-        exit 99
-    fi
 
-    if [ $nb_svr -eq 0 ]; then
-        echo ERROR: \"servers\" parameter is not defined in \"$ini_file\"
+    nb_scenario=1
+    scenario[$nb_scenario]=$(crudini --get $ini_file 'call scenario' $nb_scenario)
+       
+    while [ ${#scenario[nb_scenario]} -gt 0 ]
+    do
+      
+        let nb_scenario++
+        scenario[$nb_scenario]=$(crudini --get $ini_file 'call scenario' $nb_scenario)       
+    done
+    
+    let nb_scenario--
+    if [ nb_scenario = 0 ]; then
+        echo "Error: There is no call scenario defined in file: '"$ini_file"'"
         exit 99
     fi
-
+    
     # domain
-    domain=$(crudini --get $ini_file 'callers' domain)
+    domain=$(crudini --get $ini_file 'call scenario' domain)
     if [[ $domain"empty" == "empty" ]]; then
         echo "Error: Parameter 'domain' is not defined in file: '"$ini_file"'"
         exit 99
     fi
 
     # Email addresses to send the notification & report to
-    target_mail=$(crudini --get $ini_file 'callers' target_mail)
+    target_mail=$(crudini --get $ini_file '' target_mail)
     if [[ $target_mail"empty" == "empty" ]]; then
         echo "Error: Parameter 'target_mail' is not defined in file: '"$ini_file"'"
         exit 99
@@ -73,38 +61,49 @@ do
     #-----------------------------------------------------------------------
     # Create a body email to send
     function email_body {
-    
+
         if [ $error_end"empty" = "empty" ]; then
-            printf "ERROR\n=====\n"> $body_email
-            echo "Error start: "$error_start >> $body_email
+            printf "ERROR\n=================\n" > $body_email
+            printf "Start Date/Time\t\t: %s\n" "$error_start" >> $body_email
         else
             printf "Service Restored\n================\n" > $body_email
-            echo "Error start: "$error_start >> $body_email
-            echo "Error end  : "$error_end >> $body_email
+            printf "Error period\t\t: From: %s\tTo: %s\n" "$error_start" "$error_end" >> $body_email
         fi
+
+        echo " " >> $body_email
+        printf "Scenario\t\t: %s (%s >> %s)\n" "$descript" "$caller" "$target" >> $body_email
+        printf "SIP Server\t\t: %s\n" "$server" >> $body_email
         
-        echo "Destination: "$target >> $body_email
-        printf "\n\nCall Log\n========\n" >> $body_email
+        printf "\n\nCall Log\n=================\n" >> $body_email
         cat $curr_call_file >> $body_email
     }
 
     #-----------------------------------------------------------------------
     # The Main Loop
-    index=0
+    index=1
     
     # Main loop
-    while [ $index -lt $nb_scenario ]
+    while [ $index -le $nb_scenario ]
     do
-        clear
+        # clear
 
         # Number of seconds before each test session
         timer=9
 
+        descript=$(echo ${scenario[$index]} | sed 's/^.*#//')
+        caller=$(echo ${scenario[$index]} | sed 's/^.*:// ; s/-.*$//')
+        target=$(echo ${scenario[$index]} | sed 's/^.*\->// ; s/#.*//')
+        server=$(crudini --get $ini_file 'sbc' $(echo ${scenario[$index]} | sed 's/:.*//'))
+        if [ $server"empty" == "empty" ]; then
+            echo "Error: The SBC "$sbc " is not defined in the file: '"$ini_file"'"
+            exit 99
+        fi
 
-        caller=${uac[$(echo ${scenario[$index]} | sed 's/->.*$//g')]}
-        password=${pwd[$(echo ${scenario[$index]} | sed 's/->.*$//g')]}
-        target=${uac[$(echo ${scenario[$index]} | sed 's/^.*->//g; s/:.*$//g')]}
-        server=${svr[$(echo ${scenario[$index]} | sed 's/^.*://g')]}
+        password=$(crudini --get $ini_file 'credential' $caller)
+        if [ $password"empty" == "password" ]; then
+            echo "Error: The password of "$caller " is snot defined in the file: '"$ini_file"'"
+            exit 99
+        fi
 
         # Display the title
         echo "======================================================================="
@@ -116,17 +115,19 @@ do
         echo "=    ------    -------------     --------------"
     
         # Display the scenarios
-        disp_index=0
-        while [ $disp_index -lt $nb_scenario ]
+        disp_index=1
+        while [ $disp_index -le $nb_scenario ]
         do
-            disp_caller=${uac[$(echo ${scenario[$disp_index]} | sed 's/->.*$//g')]}
-            disp_target=${uac[$(echo ${scenario[$disp_index]} | sed 's/^.*->//g; s/:.*$//g')]}
-            disp_server=${svr[$(echo ${scenario[$disp_index]} | sed 's/^.*://g')]}
-            
+            # disp_server=$(echo ${scenario[$disp_index]} | sed 's/:.*//')
+            disp_caller=$(echo ${scenario[$disp_index]} | sed 's/^.*:// ; s/-.*$//')
+            disp_target=$(echo ${scenario[$disp_index]} | sed 's/^.*\->// ; s/#.*//')
+            disp_server=$(crudini --get $ini_file 'sbc' $(echo ${scenario[$disp_index]} | sed 's/:.*//'))
+            disp_descript=$(echo ${scenario[$disp_index]} | sed 's/^.*#//')
+
             if [ $index -eq $disp_index ]; then
-                echo "=  "$((disp_index+1))". "$disp_caller"          "$disp_target"            "$disp_server"    "$(tput rev) \<- Next to Run $(tput sgr0)
+                echo "=  "$((disp_index))". "$disp_caller"          "$disp_target"            "$disp_server"    "$(tput rev) \<- Next to Run $(tput sgr0)
             else
-                echo "=  "$((disp_index+1))". "$disp_caller"          "$disp_target"            "$disp_server
+                echo "=  "$((disp_index))". "$disp_caller"          "$disp_target"            "$disp_server
             fi
             let disp_index++
         done
@@ -145,8 +146,8 @@ do
 
             read -t1 -s -n 1 press_key
             case $press_key in
-                r) break;;
-                q) echo; exit
+                r) break ;;
+                q) echo; exit ;;
             esac
 
             let timer--
@@ -160,7 +161,7 @@ do
         
         # ---------------------------------
         # Temporary files
-        file_id="cm-"$caller"-"$target"-"
+        file_id="cm-scenario-"$index"-"
         
         curr_call_file=$log_directory$file_id"call.log"
         
@@ -259,6 +260,7 @@ do
     
         #-----------------------------------------------------------------------
         # Start the call
+             
         sudo /home/vagrant/sipp-3.5.1/sipp -sf $sipp_script $server \
         -s $target \
         -m 1 \
@@ -269,6 +271,7 @@ do
         -trace_msg -message_file $tmp_msg_file -message_overwrite true \
         -trace_shortmsg -shortmessage_file $tmp_sms_file -shortmessage_overwrite true \
 
+        # -bg \
         #  -trace_stat \
         #  -trace_rtt \
         #  -stf $tmp_stat_file \
@@ -280,12 +283,12 @@ do
         let counter_call++
 
         if [ $exit_code -eq 0 ]; then
-            result=$now_time" ==> Call test OK"
-            
+            result=$(echo $now_time \# SBC:$server \# Call:$caller"=>"$target \# OK)
+
             echo $result >> $curr_call_file
             echo $result >> $call_3h_log
             echo "==============================================="
-            echo $now_time "==> Call test OK"
+            echo $result
         
             # Service is restored if there are X nb of consecutive OK 
             let counter_ok++
@@ -299,18 +302,16 @@ do
                     error_end=$(echo $(date +%Hh%M"_"%d"-"%m"-"%Y))
         
                     # Send email if the service is restored
-                    # email_subject=$(echo "[UR] Service Restored at " )$error_end
                     email_subject=$(echo "[UR] Service is Restored" )
         
                     echo $error_start > $body_email
                     email_body
         
-                    # sudo mutt -s "$email_subject" -- $target_mail < $body_email
                     sudo mutt -s "$email_subject" -a $err_3h_log $call_3h_log -- $target_mail < $body_email
         
-                    echo $now_time "==> Service restored notification is sent" >> $curr_call_file
-                    echo $now_time "==> Service restored notification is sent" >> $call_3h_log
-                    echo $now_time "==> Service restored notification is sent" 
+                    echo $now_time "# Service restored notification is sent" >> $curr_call_file
+                    echo $now_time "# Service restored notification is sent" >> $call_3h_log
+                    echo $now_time "# Service restored notification is sent" 
         
                     > $curr_call_file
         
@@ -331,19 +332,18 @@ do
             
             # This is the first error
             if [ $counter_err_curr -eq 1 ]; then
-                # error_start=$(echo $(date +%Hh%M"_"%d"-"%m"-"%Y))
                 error_start=$(echo $(date +%Y-%m-%d" "%H:%M:%S))
                 counter_call=1
                 > $curr_call_file
             fi
         
             # Record it in Call Log
-            result=$now_time" ==> Call test ERROR (error no: "$counter_err_3h_log")"
+            result=$(echo $now_time \# SBC:$server \# Call:$caller"=>"$target \# ERROR \(error no: $counter_err_3h_log\))
             
             echo $result >> $curr_call_file
             echo $result >> $call_3h_log
             echo "==============================================="
-            echo $now_time "==> Call test ERROR"
+            echo $result
             
             # Error appended to the 3-hours-error-log
             echo "================================================================" >> $err_3h_log
@@ -361,7 +361,8 @@ do
             # ------------------------------------------------------------------------
             # To send notification on minutes 3, 9, 27, 81 ... etc
             error_start_sec=$(date -d "$error_start" +%s)
-            error_now_sec=$(date -d "$now_time" +%s)
+            # now_time=$(date +%F" "%H":"%M":"%S)
+            error_now_sec=$(date -d "$(date +%F" "%H":"%M":"%S)" +%s)
             sec_from_start=$((error_now_sec-error_start_sec))
             sec_to_send=$((3**counter_notif*60))
             sec_next_to_send=$((3**(counter_notif+1)*60))
@@ -370,35 +371,27 @@ do
             if [ $sec_from_start -gt $sec_next_to_send ]; then
                 counter_err_curr=1
                 counter_notif=0
-                #error_to_send=1
             fi
-        
-            # Skip notification if this the first error
-            if [ $counter_notif -eq 0 ]; then
+          
+            # Time to send notification
+            if [ $sec_from_start -gt $sec_to_send ]; then
                 let counter_notif++
-            else
-                # Time to send notification
-                if [ $sec_from_start -gt $sec_to_send ]; then
-                    let counter_notif++
+                # let counter_to_display=$counter_notif-1
         
-                    let counter_to_display=$counter_notif-1
-            
-                    # email_subject=$(echo "[UR] ERROR ("$counter_to_display"). Since " )$error_start
-                    email_subject=$(echo "[UR] ERROR ("$counter_to_display")" )
-                    
-                    email_body
-            
-                    sudo mutt -s "$email_subject" -a $err_3h_log $call_3h_log -- $target_mail < $body_email
-                    
-                    echo $now_time "==> Error notification is sent" >> $curr_call_file
-                    echo $now_time "==> Error notification is sent"
-                fi
+                email_subject=$(echo "[UR] ERROR ("$counter_notif")" )
+                
+                email_body
+
+                sudo mutt -s "$email_subject" -a $err_3h_log $call_3h_log -- $target_mail < $body_email
+                
+                echo $now_time "# Error notification is sent" >> $curr_call_file
+                echo $now_time "# Error notification is sent"
             fi
         
         fi
     
         #-----------------------------------------------------------------------
-        # Is this to send report?
+        # Is this time to send report?
         
         # Find out the previous report
         let prd_prev=$(echo $now_hour | sed 's/^0$/24/g')
@@ -429,12 +422,12 @@ do
             prev_cal=$(echo $log_directory$file_id"ur_cal_"$prev_date"_"$prd_prev"_"$prd_start".log")
         
             if [ ! -e "$prev_cal" ]; then
-                echo $now_time "==> There is No Log Report to send."
-                echo $now_time "==> There is No Log Report to send." >> $call_3h_log
-                echo $now_time "==> There is No Log Report to send." >> $prev_rpt
+                echo $now_time "# There is No Log Report to send."
+                echo $now_time "# There is No Log Report to send." >> $call_3h_log
+                echo $now_time "# There is No Log Report to send." >> $prev_rpt
             else
-                echo $now_time "==> Sending Report"
-                echo $now_time "==> Sending Report" >> $call_3h_log
+                echo $now_time "# Sending Report"
+                echo $now_time "# Sending Report" >> $call_3h_log
                 
                 email_subject=$(echo "[UR] Report")
         
@@ -444,17 +437,7 @@ do
             
                 nb_errors=$(cat $prev_cal | grep ERROR | wc -l)
                 sudo echo "Nb of Errors : "$nb_errors >> $prev_rpt
-                
-                # Build the email subject
-                # if [ $nb_errors -eq 0 ]; then
-                # 	sudo echo "Nb of Errors : "$nb_errors >> $prev_rpt
-                # 	 email_subject=$(echo "[UR] Report "$prd_prev"h-"$prd_start"h.")
-                # 
-                # else
-                # 	sudo echo "Nb of Errors : "$nb_errors" (see attachment)" >> $prev_rpt
-                # 	email_subject=$(echo "[UR] Report "$prd_prev"h-"$prd_start"h. Nb Errors: "$nb_errors)"."
-                # fi
-        
+                        
                 # Send the email
                 if [ ! -e "$prev_err" ]; then
                     # Send the report in email with attachment only call log
@@ -466,9 +449,6 @@ do
         
             fi
         fi
-        
-        # DEBUG ^%!%$^"%*&^*&!"*^%%&^&&^%&^
-        # sudo rm $prev_rpt
         
         #-----------------------------------------------------------------------
         # Update the Init file
@@ -519,16 +499,19 @@ do
             echo "xxx - Debug counter_err_3h_log:" $counter_err_3h_log
             echo "xxx - Debug prd_current       :" $prd_current
             echo "==============================================="
+            
+            echo ""
+            read -p "Press [Enter] to continue ..."
         fi
-    
-    
+       
         #-----------------------------------------------------------------------
         # Next Scenario
         let index++
+        
+        # Kill all hung process of SIPp tool
+        sudo ps -ef | sudo pkill -f sipp
     done
     
-    # Kill all hung process of SIPp tool
-    sudo ps -ef | sudo pkill -f sipp
     
-    echo $now_time "==> Call Test completed-."
+    echo $now_time "# Call Test completed-."
 done
