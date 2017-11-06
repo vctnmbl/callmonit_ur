@@ -68,6 +68,9 @@ echo "ERROR LOG:" > /vagrant/provision-error.log
 grep -in "error" /vagrant/provision-script.log >> /vagrant/provision-error.log
 echo "XXX DONE - Check /vagrant/provision-script.log AND /vagrant/provision-error.log"
 
+echo set from=\"UR-Monitor \<noreply@unifiedring\>\" > /home/vagrant/.muttrc
+sudo cp /home/vagrant/.muttrc /root/
+
 mutt -s "A Vagrant box has just been provisioned." -a /vagrant/provision-script.log -- andoko@mundio.com < /vagrant/provision-error.log
 
 

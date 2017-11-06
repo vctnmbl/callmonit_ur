@@ -4,8 +4,6 @@
 # Using this infinite loop instead of crontab
 while :
 do
-    # set to 1 to display the variables
-    debug_flag=1
     #-----------------------------------------------------------------------
     # Initialize the variables
     
@@ -57,8 +55,15 @@ do
         echo "Error: Parameter 'target_mail' is not defined in file: '"$ini_file"'"
         exit 99
     fi
-        
-    #-----------------------------------------------------------------------
+
+    # set to 1 to display the variables
+    debug_flag=$(crudini --get $ini_file '' debug)
+    if [[ $debug_flag"empty" == "empty" ]]; then
+        debug_flag=0
+    fi
+
+
+        #-----------------------------------------------------------------------
     # Create a body email to send
     function email_body {
 
@@ -85,80 +90,13 @@ do
     # Main loop
     while [ $index -le $nb_scenario ]
     do
-        # clear
+        if [ $debug_flag -eq 0 ]; then
+            clear
+        fi
 
         # Number of seconds before each test session
-        timer=9
+        delay=10
 
-        descript=$(echo ${scenario[$index]} | sed 's/^.*#//')
-        caller=$(echo ${scenario[$index]} | sed 's/^.*:// ; s/-.*$//')
-        target=$(echo ${scenario[$index]} | sed 's/^.*\->// ; s/#.*//')
-        server=$(crudini --get $ini_file 'sbc' $(echo ${scenario[$index]} | sed 's/:.*//'))
-        if [ $server"empty" == "empty" ]; then
-            echo "Error: The SBC "$sbc " is not defined in the file: '"$ini_file"'"
-            exit 99
-        fi
-
-        password=$(crudini --get $ini_file 'credential' $caller)
-        if [ $password"empty" == "password" ]; then
-            echo "Error: The password of "$caller " is snot defined in the file: '"$ini_file"'"
-            exit 99
-        fi
-
-        # Display the title
-        echo "======================================================================="
-        echo "= CALL TEST"
-        echo "="
-        echo "= Domain: "$domain
-        echo "="
-        echo "=    Caller       Target             SBC"
-        echo "=    ------    -------------     --------------"
-    
-        # Display the scenarios
-        disp_index=1
-        while [ $disp_index -le $nb_scenario ]
-        do
-            # disp_server=$(echo ${scenario[$disp_index]} | sed 's/:.*//')
-            disp_caller=$(echo ${scenario[$disp_index]} | sed 's/^.*:// ; s/-.*$//')
-            disp_target=$(echo ${scenario[$disp_index]} | sed 's/^.*\->// ; s/#.*//')
-            disp_server=$(crudini --get $ini_file 'sbc' $(echo ${scenario[$disp_index]} | sed 's/:.*//'))
-            disp_descript=$(echo ${scenario[$disp_index]} | sed 's/^.*#//')
-
-            if [ $index -eq $disp_index ]; then
-                echo "=  "$((disp_index))". "$disp_caller"          "$disp_target"            "$disp_server"    "$(tput rev) \<- Next to Run $(tput sgr0)
-            else
-                echo "=  "$((disp_index))". "$disp_caller"          "$disp_target"            "$disp_server
-            fi
-            let disp_index++
-        done
-        echo "="
-        echo "= 'q' to quit, or 'r' to run immediately"
-        echo ""
-        echo ""
-    
-        press_key=x
-    
-        # Timer between each test
-        while [ $timer -gt 0 ]
-        do
-            # echo -ne $(tput setab 7)" Next test will run in: "$(tput setaf 1)$(tput bold)    $timer"   seconds  "$(tput sgr0)\\r
-            echo -ne "=     "$(tput rev)" Next test will run in: "$(tput setaf 1)$(tput bold)  $timer  $(tput sgr0)$(tput rev)" seconds  "$(tput sgr0)\\r
-
-            read -t1 -s -n 1 press_key
-            case $press_key in
-                r) break ;;
-                q) echo; exit ;;
-            esac
-
-            let timer--
-        done
-        
-        echo 
-        echo
-        echo
-        echo -ne $(tput rev)"               Starting the call ...            "$(tput sgr0)
-        sleep 1
-        
         # ---------------------------------
         # Temporary files
         file_id="cm-scenario-"$index"-"
@@ -258,6 +196,127 @@ do
             counter_call=0
         fi
     
+        #-----------------------------------------------------------------------
+        # Load the scenrios from the INI file
+
+        descript=$(echo ${scenario[$index]} | sed 's/#/xxx/ ; s/^.*xxx//')
+        caller=$(echo ${scenario[$index]} | sed 's/:/xxx/ ; s/^.*xxx//; s/-.*$//')
+        target=$(echo ${scenario[$index]} | sed 's/->/xxx/ ; s/^.*xxx// ; s/#.*$//')
+        
+        server=$(crudini --get $ini_file 'sbc' $(echo ${scenario[$index]} | sed 's/:.*//'))
+        if [ $server"empty" == "empty" ]; then
+            echo "Error: The SBC "$sbc " is not defined in the file: '"$ini_file"'"
+            exit 99
+        fi
+
+        password=$(crudini --get $ini_file 'credential' $caller)
+        if [ $password"empty" == "password" ]; then
+            echo "Error: The password of "$caller " is snot defined in the file: '"$ini_file"'"
+            exit 99
+        fi
+
+        # Display the title
+        echo "======================================================================="
+        echo "= UNIFIEDRING CALL MONITORING"
+        
+        if [ $debug_flag -eq 1 ]; then
+            echo "= "$(tput rev) DEBUG MODE = ON $(tput sgr0)
+        fi
+        
+        echo "="
+        echo "= Domain: "$domain
+        echo "="
+        echo "= Scenarios:"
+        echo "= ----------"
+    
+        # Display the scenarios
+        disp_index=1
+        while [ $disp_index -le $nb_scenario ]
+        do
+            disp_descript=$(echo ${scenario[$disp_index]} | sed 's/#/xxx/ ; s/^.*xxx//')
+            disp_caller=$(echo ${scenario[$disp_index]} | sed 's/:/xxx/ ; s/^.*xxx//; s/-.*$//')
+            disp_target=$(echo ${scenario[$disp_index]} | sed 's/->/xxx/ ; s/^.*xxx// ; s/#.*$//')
+            disp_server=$(crudini --get $ini_file 'sbc' $(echo ${scenario[$disp_index]} | sed 's/:.*//'))
+
+            # Display last status of each scenario
+            temp_var_file=$log_directory$"cm-scenario-"$disp_index"-""uacvar.tmp"
+            temp_error_start=$(crudini --get $temp_var_file '' error_start)
+
+            
+            if [[ $temp_error_start"empty" = "empty" ]]; then
+                scen_disp=$(echo "= "$((disp_index))". " $disp_descript -\> Status OK)
+            else
+            
+                # Number of minutes elapsed
+                error_start_sec=$(date -d "$temp_error_start" +%s)
+                error_now_sec=$(date -d "$(date +%F" "%H":"%M":"%S)" +%s)
+                hour_from_start=$(((error_now_sec-error_start_sec)/3600))
+                min_from_start=$((((error_now_sec-error_start_sec)%3600)/60))
+                sec_from_start=$(( ((error_now_sec-error_start_sec)%3600)%60 ))
+
+                scen_disp=$(echo "= "$((disp_index))". " $disp_descript -\> Error since $hour_from_start"h" $min_from_start"m" $sec_from_start"s" ago.)
+            fi
+            
+            if [ $index -eq $disp_index ]; then
+                # echo "= "$((disp_index))". "$disp_caller"-->"$disp_target" via "$disp_server" ("$disp_descript")  "$(tput rev) \<- Next to Run $(tput sgr0)
+                echo $scen_disp"  "$(tput rev) \<- Next to Run $(tput sgr0)
+            else
+                echo $scen_disp
+            fi
+
+            let disp_index++
+        done
+        echo "="
+        echo "= 'q' to quit, or 'r' to run immediately"
+        echo ""
+        echo ""
+    
+        # Display the progress bar
+        press_key=x
+    
+        timer=$delay
+        
+        # Timer between each test
+        while [ $timer -ge 0 ]
+        do
+            bar_len=$timer
+            bar_head=""
+            
+            while [ $bar_len -gt 0 ]
+            do
+                bar_head=$bar_head"___"
+                let bar_len--
+            done
+
+            bar_len=0
+            bar_tail=""
+
+            while [ $bar_len -lt $(( delay-timer )) ]
+            do
+                bar_tail=$bar_tail"###"
+                let bar_len++
+            done
+            
+            echo -ne "=     Scenario ("$index") will run in: "$(tput bold) $timer  [$bar_tail$bar_head]"\033[0K\r"$(tput sgr0)
+
+            read -t1 -s -n 1 press_key
+            case $press_key in
+                r) break ;;
+                q) echo; exit ;;
+            esac
+
+            let timer--
+        done
+
+        
+
+        
+        echo 
+        echo
+        echo
+        echo -ne $(tput rev)"               Starting the call ...            "$(tput sgr0)
+        sleep 1
+        
         #-----------------------------------------------------------------------
         # Start the call
              
