@@ -128,12 +128,6 @@ do
         result=$now_time"Call aborted"
     
         #-----------------------------------------------------------------------
-        # Creates a credential file (CSV) to be used by SIPp for the SIP Challenge in ur_uac.xml
-    
-        echo "SEQUENTIAL" > $credential_file
-        echo $caller";[authentication username="$caller" password="$password"]" >> $credential_file
-    
-        #-----------------------------------------------------------------------
         # Initialise report file names
         
         now_hour=$(echo $(date +%H) | sed 's/^0//g')
@@ -211,9 +205,14 @@ do
 
         password=$(crudini --get $ini_file 'credential' $caller)
         if [ $password"empty" == "password" ]; then
-            echo "Error: The password of "$caller " is snot defined in the file: '"$ini_file"'"
+            echo "Error: The password of "$caller " is not defined in the file: '"$ini_file"'"
             exit 99
         fi
+
+        #-----------------------------------------------------------------------
+        # Creates a credential file (CSV) to be used by SIPp for the SIP Challenge in ur_uac.xml
+        echo "SEQUENTIAL" > $credential_file
+        echo $caller";[authentication username="$caller" password="$password"]" >> $credential_file
 
         # Display the title
         echo "======================================================================="
@@ -242,39 +241,45 @@ do
             # Display last status of each scenario
             temp_var_file=$log_directory$"cm-scenario-"$disp_index"-""uacvar.tmp"
             temp_error_start=$(crudini --get $temp_var_file '' error_start)
-
+            temp_curr_call_file=$log_directory$"cm-scenario-"$disp_index"-""call.log"
             
-            if [[ $temp_error_start"empty" = "empty" ]]; then
-                scen_disp=$(echo "= "$((disp_index))". " $disp_descript -\> Status OK)
-            else
-            
-                # Number of minutes elapsed
-                error_start_sec=$(date -d "$temp_error_start" +%s)
-                error_now_sec=$(date -d "$(date +%F" "%H":"%M":"%S)" +%s)
-                hour_from_start=$(((error_now_sec-error_start_sec)/3600))
-                min_from_start=$((((error_now_sec-error_start_sec)%3600)/60))
-                sec_from_start=$(( ((error_now_sec-error_start_sec)%3600)%60 ))
-
-                scen_disp=$(echo "= "$((disp_index))". " $disp_descript -\> Error since $hour_from_start"h" $min_from_start"m" $sec_from_start"s" ago.)
-            fi
-            
+            # Display the current scenario
             if [ $index -eq $disp_index ]; then
-                # echo "= "$((disp_index))". "$disp_caller"-->"$disp_target" via "$disp_server" ("$disp_descript")  "$(tput rev) \<- Next to Run $(tput sgr0)
-                echo $scen_disp"  "$(tput rev) \<- Next to Run $(tput sgr0)
+                # echo $scen_disp"  "$(tput rev)\<-Next$(tput sgr0)
+                echo "= "$((disp_index))". " $disp_descript"  "$(tput rev)\<-Next Run $(tput sgr0)
             else
-                echo $scen_disp
+                # echo $scen_disp
+                echo "= "$((disp_index))". " $disp_descript
             fi
+            
+            # Display status
+            if [[ $temp_error_start"empty" = "empty" ]]; then
+                # scen_disp=$(echo "= "$((disp_index))". " $disp_descript -\> Status OK)
+                echo "=    "- Status: OK
+            else
+            
+                # # Number of minutes elapsed
+                # error_start_sec=$(date -d "$temp_error_start" +%s)
+                # error_now_sec=$(date -d "$(date +%F" "%H":"%M":"%S)" +%s)
+                # hour_from_start=$(((error_now_sec-error_start_sec)/3600))
+                # min_from_start=$((((error_now_sec-error_start_sec)%3600)/60))
+                # sec_from_start=$(( ((error_now_sec-error_start_sec)%3600)%60 ))
+
+                # scen_disp=$(echo "= "$((disp_index))". " $disp_descript -\> Error since $hour_from_start"h" $min_from_start"m" $sec_from_start"s" ago.)
+                # scen_disp=$(echo "= "$((disp_index))". " $disp_descript -\> Error start: $(echo $temp_error_start | sed 's/^.*\s//'))
+                echo "=    "- Status   : Error start: $(echo $temp_error_start | sed 's/^.*\s//')
+            fi
+            
+            
+            # display last status of 
+            # echo "=    "- Status: $(tail -n 1 $temp_curr_call_file | sed 's/^.*#//' )
+            echo "=    "- Last test at $(tail -n 1 $temp_curr_call_file | sed 's/#.*$//' ) -\> $(tail -n 1 $temp_curr_call_file | sed 's/^.*#//' )
+            echo "="
 
             let disp_index++
         done
         
         # Display last result
-        echo "="
-        echo "= ---------------------------------------------------------------------"
-        echo "= Last results of Scenario ($index"\):
-        echo "= ---------------------------------------------------------------------"
-        tail $curr_call_file
-        
         
         echo "= ---------------------------------------------------------------------"
         echo "="
@@ -451,13 +456,13 @@ do
             # Reset from start if the variable saved in the file is not synched
             if [ $sec_from_start -gt $sec_next_to_send ]; then
                 counter_err_curr=1
+                error_start=$(echo $(date +%Y-%m-%d" "%H:%M:%S))
                 counter_notif=0
             fi
           
             # Time to send notification
             if [ $sec_from_start -gt $sec_to_send ]; then
                 let counter_notif++
-                # let counter_to_display=$counter_notif-1
         
                 email_subject=$(echo "[UR] ERROR ("$counter_notif")" )
                 
@@ -465,7 +470,7 @@ do
 
                 sudo mutt -s "$email_subject" -a $err_3h_log $call_3h_log -- $target_mail < $body_email
                 
-                echo $now_time "# Error notification is sent" >> $curr_call_file
+                # echo $now_time "# Error notification is sent" >> $curr_call_file
                 echo $now_time "# Error notification is sent"
             fi
         
