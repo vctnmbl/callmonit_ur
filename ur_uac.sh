@@ -226,8 +226,6 @@ do
         echo "= Domain: "$domain
         echo "="
         echo "= ---------------------------------------------------------------------"
-        echo "= Scenarios:"
-        echo "= ---------------------------------------------------------------------"
     
         # Display the scenarios
         disp_index=1
@@ -246,10 +244,10 @@ do
             # Display the current scenario
             if [ $index -eq $disp_index ]; then
                 # echo $scen_disp"  "$(tput rev)\<-Next$(tput sgr0)
-                echo "= "$((disp_index))". " $disp_descript"  "$(tput rev)\<-Next Run $(tput sgr0)
+                echo "= "$(tput bold)Test No $((disp_index))": " $disp_descript"  "$(tput rev)\<-Next Run $(tput sgr0)
             else
                 # echo $scen_disp
-                echo "= "$((disp_index))". " $disp_descript
+                echo "= "$(tput bold)Test No $((disp_index))": " $disp_descript $(tput sgr0)
             fi
             
             # Display status
@@ -308,11 +306,12 @@ do
 
             while [ $bar_len -lt $(( delay-timer )) ]
             do
-                bar_tail=$bar_tail"###"
+                bar_tail=$bar_tail"___"
                 let bar_len++
             done
+            bar_tail=$(tput bold)$(tput rev)$bar_tail$(tput sgr0)
             
-            echo -ne "=     Scenario ("$index") will run in: "$(tput bold) $timer  [$bar_tail$bar_head]"\033[0K\r"$(tput sgr0)
+            echo -ne "=     Test No ("$index") will run in: " $timer  [$bar_tail$bar_head]"\033[0K\r"
 
             read -t1 -s -n 1 press_key
             case $press_key in
