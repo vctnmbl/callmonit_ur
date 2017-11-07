@@ -226,8 +226,9 @@ do
         echo "="
         echo "= Domain: "$domain
         echo "="
+        echo "= ---------------------------------------------------------------------"
         echo "= Scenarios:"
-        echo "= ----------"
+        echo "= ---------------------------------------------------------------------"
     
         # Display the scenarios
         disp_index=1
@@ -266,10 +267,19 @@ do
 
             let disp_index++
         done
+        
+        # Display last result
+        echo "="
+        echo "= ---------------------------------------------------------------------"
+        echo "= Last results of Scenario ($index"\):
+        echo "= ---------------------------------------------------------------------"
+        tail $curr_call_file
+        
+        
+        echo "= ---------------------------------------------------------------------"
         echo "="
         echo "= 'q' to quit, or 'r' to run immediately"
-        echo ""
-        echo ""
+        echo "= ---------------------------------------------------------------------"
     
         # Display the progress bar
         press_key=x
@@ -329,16 +339,28 @@ do
         -trace_err -error_file $tmp_err_file -error_overwrite true \
         -trace_msg -message_file $tmp_msg_file -message_overwrite true \
         -trace_shortmsg -shortmessage_file $tmp_sms_file -shortmessage_overwrite true \
-
-        # -bg \
+        
+        #-bg \
         #  -trace_stat \
         #  -trace_rtt \
         #  -stf $tmp_stat_file \
 
         exit_code="${?}"
-
         # exit_code=99
 
+        # Experiement using background SIPp process
+        # mypid=$(pgrep -o -x sipp)
+        # echo MYPID: $mypid  waiting...
+        # 
+        # while [ -e /proc/$mypid ]
+        # do
+        #     echo "Process: $PID is still running"
+        #     sleep .6
+        # done
+        # echo "Process $PID has finished"
+        # 
+        # echo  MYexitCode $exit_code
+        
         let counter_call++
 
         if [ $exit_code -eq 0 ]; then
