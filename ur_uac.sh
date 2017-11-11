@@ -22,16 +22,23 @@ do
     target=
     descript=
     curr_call_file=
-  
+
     #-----------------------------------------------------------------------
     # Get the parameters from INI file
 
+    # Monitor Name
+    monitor_name=$(crudini --get $ini_file '' monitor_name)
+    if [[ $monitor_name"empty" == "empty" ]]; then
+        echo "Error: Parameter 'monitor_name' is not defined in file: '"$ini_file"'"
+        exit 99
+    fi
+
+    # The Scenarios
     nb_scenario=1
     scenario[$nb_scenario]=$(crudini --get $ini_file 'call scenario' $nb_scenario)
        
     while [ ${#scenario[nb_scenario]} -gt 0 ]
     do
-      
         let nb_scenario++
         scenario[$nb_scenario]=$(crudini --get $ini_file 'call scenario' $nb_scenario)       
     done
@@ -42,7 +49,7 @@ do
         exit 99
     fi
     
-    # domain
+    # The Domain
     domain=$(crudini --get $ini_file 'call scenario' domain)
     if [[ $domain"empty" == "empty" ]]; then
         echo "Error: Parameter 'domain' is not defined in file: '"$ini_file"'"
@@ -56,14 +63,13 @@ do
         exit 99
     fi
 
-    # set to 1 to display the variables
+    # Set to 1 to display the variables
     debug_flag=$(crudini --get $ini_file '' debug)
     if [[ $debug_flag"empty" == "empty" ]]; then
         debug_flag=0
     fi
 
-
-        #-----------------------------------------------------------------------
+    #-----------------------------------------------------------------------
     # Create a body email to send
     function email_body {
 
@@ -534,7 +540,6 @@ do
                     # Send the report in email with attachments of call log and call error
                     sudo mutt -s "$email_subject" -a $prev_cal $prev_err -- $target_mail < $prev_rpt
                 fi
-        
             fi
         fi
         
@@ -600,6 +605,9 @@ do
         sudo ps -ef | sudo pkill -f sipp
     done
     
-    
     echo $now_time "# Call Test completed-."
+
+    source $log_directory/heartbeat_generator.sh
+    source $log_directory/heartbeat_listener.sh
+
 done

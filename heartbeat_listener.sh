@@ -1,6 +1,6 @@
 
 
-echo ---------------------------------------
+# echo ---------------------------------------
 # if the time comes to generate or listen heartbeat
 
 var_tmp_file=$log_directory"heartbeat_listener_var.tmp"
