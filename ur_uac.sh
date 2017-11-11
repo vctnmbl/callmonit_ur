@@ -149,44 +149,54 @@ do
     
         #-----------------------------------------------------------------------
         # Initialise counters and variables from variables temporary file
+        
+        if [ -e $var_file ]; then
     
-        counter_err_3h_log=$(crudini --get $var_file '' counter_err_3h_log)
-        if [ $counter_err_3h_log"empty" = "empty" ]; then
-            counter_err_3h_log=0
-        fi
-    
-        # Current period e.g. 03-06
-        prd_current=$(crudini --get $var_file '' prd_current)
-        if [ $prd_current"empty" = "empty" ]; then
-            prd_current=empty
-        fi
-    
-        if [ $prd_current != $prd_start"-"$prd_end ]; then
-            # If last period is different, reset the error counter
+            counter_err_3h_log=$(crudini --get $var_file '' counter_err_3h_log)
+            if [ $counter_err_3h_log"empty" = "empty" ]; then
+                counter_err_3h_log=0
+            fi
+        
+            # Current period e.g. 03-06
+            prd_current=$(crudini --get $var_file '' prd_current)
+            if [ $prd_current"empty" = "empty" ]; then
+                prd_current=empty
+            fi
+        
+            if [ $prd_current != $prd_start"-"$prd_end ]; then
+                # If last period is different, reset the error counter
+                counter_err_3h_log=0
+                prd_current=$prd_start"-"$prd_end
+            fi
+        
+            # Current error counter 
+            counter_err_curr=$(crudini --get $var_file '' counter_err_curr)
+            if [ $counter_err_curr"empty" = "empty" ]; then
+                counter_err_curr=0
+            fi
+            
+            counter_ok=$(crudini --get $var_file '' counter_ok)
+            if [ $counter_ok"empty" = "empty" ]; then
+                counter_ok=0
+            fi
+            
+            counter_notif=$(crudini --get $var_file '' counter_notif)
+            if [ $counter_notif"empty" = "empty" ]; then
+                counter_notif=0
+            fi
+            
+            error_start=$(crudini --get $var_file '' error_start)
+            
+            counter_call=$(crudini --get $var_file '' counter_call)
+            if [ $counter_call"empty" = "empty" ]; then
+                counter_call=0
+            fi
+        else
             counter_err_3h_log=0
             prd_current=$prd_start"-"$prd_end
-        fi
-    
-        # Current error counter 
-        counter_err_curr=$(crudini --get $var_file '' counter_err_curr)
-        if [ $counter_err_curr"empty" = "empty" ]; then
             counter_err_curr=0
-        fi
-        
-        counter_ok=$(crudini --get $var_file '' counter_ok)
-        if [ $counter_ok"empty" = "empty" ]; then
             counter_ok=0
-        fi
-        
-        counter_notif=$(crudini --get $var_file '' counter_notif)
-        if [ $counter_notif"empty" = "empty" ]; then
             counter_notif=0
-        fi
-        
-        error_start=$(crudini --get $var_file '' error_start)
-        
-        counter_call=$(crudini --get $var_file '' counter_call)
-        if [ $counter_call"empty" = "empty" ]; then
             counter_call=0
         fi
     
@@ -238,15 +248,16 @@ do
 
             # Display last status of each scenario
             temp_var_file=$log_directory$"cm-scenario-"$disp_index"-""uacvar.tmp"
-            temp_error_start=$(crudini --get $temp_var_file '' error_start)
+            if [ -e $temp_var_file ]; then            
+                temp_error_start=$(crudini --get $temp_var_file '' error_start)    
+            fi
+            
             temp_curr_call_file=$log_directory$"cm-scenario-"$disp_index"-""call.log"
             
             # Display the current scenario
             if [ $index -eq $disp_index ]; then
-                # echo $scen_disp"  "$(tput rev)\<-Next$(tput sgr0)
                 echo "= "$(tput bold)Test No $((disp_index))": " $disp_descript"  "$(tput rev)\<-Next Run $(tput sgr0)
             else
-                # echo $scen_disp
                 echo "= "$(tput bold)Test No $((disp_index))": " $disp_descript $(tput sgr0)
             fi
             
@@ -255,23 +266,15 @@ do
                 # scen_disp=$(echo "= "$((disp_index))". " $disp_descript -\> Status OK)
                 echo "=    "- Status: OK
             else
-            
-                # # Number of minutes elapsed
-                # error_start_sec=$(date -d "$temp_error_start" +%s)
-                # error_now_sec=$(date -d "$(date +%F" "%H":"%M":"%S)" +%s)
-                # hour_from_start=$(((error_now_sec-error_start_sec)/3600))
-                # min_from_start=$((((error_now_sec-error_start_sec)%3600)/60))
-                # sec_from_start=$(( ((error_now_sec-error_start_sec)%3600)%60 ))
-
-                # scen_disp=$(echo "= "$((disp_index))". " $disp_descript -\> Error since $hour_from_start"h" $min_from_start"m" $sec_from_start"s" ago.)
-                # scen_disp=$(echo "= "$((disp_index))". " $disp_descript -\> Error start: $(echo $temp_error_start | sed 's/^.*\s//'))
                 echo "=    "- Status   : Error start: $(echo $temp_error_start | sed 's/^.*\s//')
             fi
             
             
             # display last status of 
             # echo "=    "- Status: $(tail -n 1 $temp_curr_call_file | sed 's/^.*#//' )
-            echo "=    "- Last test at $(tail -n 1 $temp_curr_call_file | sed 's/#.*$//' ) -\> $(tail -n 1 $temp_curr_call_file | sed 's/^.*#//' )
+            if [ -e $temp_curr_call_file ]; then
+                echo "=    "- Last test at $(tail -n 1 $temp_curr_call_file | sed 's/#.*$//' ) -\> $(tail -n 1 $temp_curr_call_file | sed 's/^.*#//' )
+            fi
             echo "="
 
             let disp_index++
@@ -495,7 +498,7 @@ do
             
         prev_rpt=$(echo $log_directory$file_id"ur_rpt_"$prev_date"_"$prd_prev"_"$prd_start".log")
         
-        # If report was not created previously
+        # If report was not created in previous period
         if [ ! -e $prev_rpt ]; then
             # Sending report
         
@@ -506,7 +509,7 @@ do
             ## If no files to send, then skip
             prev_cal=$(echo $log_directory$file_id"ur_cal_"$prev_date"_"$prd_prev"_"$prd_start".log")
         
-            if [ ! -e "$prev_cal" ]; then
+            if [ ! -e $prev_cal ]; then
                 echo $now_time "# There is No Log Report to send."
                 echo $now_time "# There is No Log Report to send." >> $call_3h_log
                 echo $now_time "# There is No Log Report to send." >> $prev_rpt

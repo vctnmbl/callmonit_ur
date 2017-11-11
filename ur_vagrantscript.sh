@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 
+sudo nmcli con add type ethernet con-name MyVagrant0 ifname eth0 ip4 10.0.2.15/24 gw4 10.0.2.2
+sudo nmcli con mod MyVagrant0 ipv4.dns '8.8.8.8 8.8.4.4'
+sudo nmcli con up MyVagrant0
+
 sudo yum -y update
 
-sudo bash -c "echo 'nameserver 8.8.8.8' > /etc/resolv.conf"
+# sudo bash -c "echo 'nameserver 8.8.8.8' > /etc/resolv.conf"
 
 sudo timedatectl set-timezone Europe/London
 

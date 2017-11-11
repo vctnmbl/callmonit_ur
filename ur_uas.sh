@@ -51,15 +51,15 @@ echo "--id sip:$target"@"$domain" >> $pjsua_config
 echo "--username $target" >> $pjsua_config
 echo "--password $password" >> $pjsua_config  
 
-echo "XXX"
-cat $pjsua_config
-echo "XXX"
-
-read -p wait...
+# echo "XXX"
+# cat $pjsua_config
+# echo "XXX"
+# 
+# read -p wait...
 
 echo "================================================="
 echo "= UAS - Call Receiver                           ="
-# echo "= Receiver: "$receiver"@"$domain
+echo "= Receiver: "$target"@"$domain
 echo "================================================="
 
 # read -p "Press [Enter] key to continue to PJSUA..." key

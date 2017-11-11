@@ -21,6 +21,10 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.provision "shell", path: "ur_vagrantscript.sh"
+  
+  config.vm.provider :virtualbox do |vb|
+     vb.gui = false
+  end
 	
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
