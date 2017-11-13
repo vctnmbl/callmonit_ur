@@ -68,8 +68,10 @@ if [[ $enable"empty" == 1"empty" ]]; then
 
         # Fetching emails emails
         echo ==\> \[Beat Listener\] Fetching emails...
-        fetchmail --showdots --silent
+
+        fetchmail --showdots --silent --nokeep -flush
         exit_code="${?}"
+
         # echo Fetchmail Exit Code:$exit_code:
         
         if [ $exit_code -ne 0 ]; then
@@ -85,7 +87,7 @@ if [[ $enable"empty" == 1"empty" ]]; then
             echo $subject_mail > $body_mail_file
             echo $(date +%F" "%H":"%M) >> $body_mail_file
           
-            mutt -s $subject_mail $target_mail < $body_mail_file
+            mutt -s "$subject_mail" $target_mail < $body_mail_file
 
             # Reset
             nb_no_heartbeat=0

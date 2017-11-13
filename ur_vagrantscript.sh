@@ -45,7 +45,7 @@ make >> /vagrant/provision-script.log 2>&1
 
 cd /home/vagrant/
 
-# ======================= Provisioning PJSIP ==============================
+# ======================= Provision PJSIP ==============================
 
 sudo yum install -y alsa-lib-devel alsa-lib  >> /vagrant/provision-script.log 2>&1
 sudo yum install -y jack-audio-connection-kit >> /vagrant/provision-script.log 2>&1
@@ -60,11 +60,48 @@ sudo ./configure  >> /vagrant/provision-script.log 2>&1
 sudo make dep  >> /vagrant/provision-script.log 2>&1
 sudo make clean  >> /vagrant/provision-script.log 2>&1
 sudo make  >> /vagrant/provision-script.log 2>&1
-sudo make install  >> /vagrant/provision-script.log 2>&1
+sudo make install >> /vagrant/provision-script.log 2>&1
 
 /home/vagrant/pjproject-2.7/pjsip-apps/bin/pjsua-x86_64-unknown-linux-gnu -version >> /vagrant/provision-script.log 2>&1
 
 cd /home/vagrant/
+
+# ======================= Provision Fetchmail ==============================
+
+sudo yum install -y fetchmail
+sudo yum install -y procmail
+
+echo "|/usr/bin/procmail" > /home/vagrant/.forward
+chown vagrant:vagrant /home/vagrant/.forward
+
+#--- .fetchmailrc file
+
+echo set no bouncemail > /home/vagrant/.fetchmailrc
+echo poll imap.gmail.com proto IMAP user \"mundiomobile@gmail.com\" is vagrant here pass \"super99man\" ssl folder 'URM'  >> /home/vagrant/.fetchmailrc
+echo mda \"/usr/bin/procmail -d \%T\"  >> /home/vagrant/.fetchmailrc
+
+# echo # set daemon 10 > /home/vagrant/.fetchmailrc
+# echo # set logfile /home/vagrant/fetchmail.log  > /home/vagrant/.fetchmailrc
+# echo # poll pop.gmail.com proto POP3 auth password no dns user "mundiomobile@gmail.com" pass "super99man" is vagrant keep ssl
+
+chmod 700 /home/vagrant/.fetchmailrc
+chown vagrant:vagrant /home/vagrant/.fetchmailrc
+
+# ---- .procmailrc file
+echo SHELL=/bin/bash > /home/vagrant/.procmailrc
+echo PATH=/usr/sbin:/usr/bin >> /home/vagrant/.procmailrc
+echo MAILDIR=\$HOME/Maildir/ >> /home/vagrant/.procmailrc
+echo DEFAULT=\$MAILDIR >> /home/vagrant/.procmailrc
+echo LOGFILE=\$HOME/.procmail.log >> /home/vagrant/.procmailrc
+echo LOG="" >> /home/vagrant/.procmailrc
+echo VERBOSE=yes >> /home/vagrant/.procmailrc
+
+chown vagrant:vagrant /home/vagrant/.procmailrc
+
+mkdir /home/vagrant/Maildir
+mkdir /home/vagrant/Maildir/cur
+mkdir /home/vagrant/Maildir/new
+mkdir /home/vagrant/Maildir/tmp
 
 # ======================= Wrapping ==============================
 
@@ -74,6 +111,9 @@ echo "XXX DONE - Check /vagrant/provision-script.log AND /vagrant/provision-erro
 
 echo set from=\"UR-Monitor \<noreply@unifiedring\>\" > /home/vagrant/.muttrc
 sudo cp /home/vagrant/.muttrc /root/
+chown vagrant:vagrant /home/vagrant/.muttrc
+
+
 
 mutt -s "A Vagrant box has just been provisioned." -a /vagrant/provision-script.log -- andoko@mundio.com < /vagrant/provision-error.log
 

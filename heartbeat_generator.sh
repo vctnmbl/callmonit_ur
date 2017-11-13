@@ -106,11 +106,11 @@ if [[ $enable"empty" == 1"empty" ]]; then
         
             let seq_number++
             
-            subject_mail=$(echo \<$monitor_name\> Heartbeat $seq_number)
+            subject_mail=$(echo \<$fetch\> Heartbeat $seq_number)
             echo $subject_mail  @ $(date +%H":"%M":"%S) > $body_mail_file
 
             # Sending the email
-            mutt -s $subject_mail $listener_email < $body_mail_file
+            mutt -s "$subject_mail" $listener_email < $body_mail_file
         
             echo ==\> \[Beat Generator\] $subject_mail sent to \<$listener_email\>
         else
