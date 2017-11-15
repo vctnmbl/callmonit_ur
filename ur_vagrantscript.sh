@@ -26,6 +26,14 @@ sudo yum install -y git >> /vagrant/provision-script.log 2>&1
 sudo yum install -y crudini >> /vagrant/provision-script.log 2>&1
 sudo yum install -y mutt >> /vagrant/provision-script.log 2>&1
 
+# ======================= SNMP ==============================
+
+sudo yum -y install net-snmp net-snmp-utils
+sudo sed -i.bak 's/.1.3.6.1.2.1.1/.1.3.6.1/' /etc/snmp/snmpd.conf   # correction for PRTG
+sudo service snmpd restart # Restart
+sudo chkconfig snmpd on  # start on booting
+
+
 # ======================= Provisioning SIPp ==============================
 echo "XXX PROVISIONING SIPp..."
 yum install -y make gcc gcc-c++ ncurses ncurses.x86_64 ncurses-devel ncurses-devel.x86_64 openssl libnet libpcap libpcap-devel libpcap.x86_64 libpcap-devel.x86_64 gsl gsl-devel >> /vagrant/provision-script.log 2>&1
@@ -102,6 +110,7 @@ mkdir /home/vagrant/Maildir
 mkdir /home/vagrant/Maildir/cur
 mkdir /home/vagrant/Maildir/new
 mkdir /home/vagrant/Maildir/tmp
+
 
 # ======================= Wrapping ==============================
 

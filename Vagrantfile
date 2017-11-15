@@ -22,9 +22,17 @@ Vagrant.configure("2") do |config|
 
   config.vm.provision "shell", path: "ur_vagrantscript.sh"
   
+  # Display the up script in VirtualBox terminal
   config.vm.provider :virtualbox do |vb|
      vb.gui = false
   end
+
+  # Bridged network using DHCP
+  config.vm.network "public_network", use_dhcp_assigned_default_route: true
+  
+  # SNMP port
+  # config.vm.network "forwarded_port", guest: 161, host: 1161, protocol: "udp"
+  # config.vm.network "forwarded_port", guest: 21, host: 2121
 	
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
