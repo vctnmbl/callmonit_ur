@@ -487,14 +487,12 @@ do
         #-----------------------------------------------------------------------
         # Is this time to send report?
         
-read -p now_hour:$now_hour:
-        
         # Find out the previous report
         let prd_prev=$(echo $now_hour | sed 's/^0$/24/g')
         let prd_prev=$(echo $(echo $prd_prev/3)-1)
         let prd_prev=$prd_prev*3
         prd_prev=$(printf "%02d\n" $prd_prev)
-read -p prd_prev:$prd_prev:
+
         # If now time is 00hxx, previous date is yesterday
         if [ "$prd_prev" == "21" ]; then
             prev_date=$(echo $(date +%Y%m%d -d "yesterday"))
@@ -503,9 +501,9 @@ read -p prd_prev:$prd_prev:
             prev_date=$now_date
             disp_date=$(echo $(date +%d-%m-%Y))
         fi
-read -p prd_prev:$prd_prev:            
+
         prev_rpt=$(echo $log_directory$file_id"ur_rpt_"$prev_date"_"$prd_prev"_"$prd_start".log")
-read -p prev_rpt:$prev_rpt:
+
         # If report was not created in previous period
         if [ ! -e $prev_rpt ]; then
             # Sending report
@@ -535,32 +533,27 @@ read -p prev_rpt:$prev_rpt:
             email_subject=$(echo "[UR] Report")
         
             prev_err=$(echo $log_directory$file_id"ur_err_"$prev_date"_"$prd_prev"_"$prd_start".log")rpt_3h_log
-read -p prev_err:$prev_err:
                     
             # Send the email
             if [ ! -e "$prev_err" ]; then
                 if [ ! -e "$prev_cal" ]; then
-read -p 1:
                     # Send the report in email without attachments
                     sudo mutt -s "$email_subject" -- $target_mail < $prev_rpt
                 else
-read -p 2:
                     # Send the report in email with attachment only call log
                     sudo mutt -s "$email_subject" -a $prev_cal -- $target_mail < $prev_rpt
                 fi
             else
                 if [ ! -e "$prev_cal" ]; then
-read -p 3:
                     # Send the report in email with attachment only call error
                     sudo mutt -s "$email_subject" -a $prev_err -- $target_mail < $prev_rpt
                 else
-read -p 4:
                     # Send the report in email with attachments of call log and call error
                     sudo mutt -s "$email_subject" -a $prev_cal $prev_err -- $target_mail < $prev_rpt
                 fi
             fi
         fi
-read -p Done:
+
         #-----------------------------------------------------------------------
         # Update the Init file
         echo "# Temporary file accessed by callmonit during the calls" > $var_file
