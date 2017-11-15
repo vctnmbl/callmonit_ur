@@ -513,8 +513,9 @@ do
             sudo echo "=================================" >> $prev_rpt
         
             ## If no files to send, then skip
-            prev_cal=$(echo $log_directory$file_id"ur_cal_"$prev_date"_"$prd_prev"_"$prd_start".log")
-        
+            # prev_cal=$(echo $log_directory$file_id"ur_cal_"$prev_date"_"$prd_prev"_"$prd_start".log")
+            prev_cal=$(echo $log_directory$file_id"calls_"$prev_date"_"$prd_prev"_"$prd_start".log")
+            
             if [ ! -e $prev_cal ]; then
                 echo $now_time "# There is No Log Report to send."
                 echo $now_time "# There is No Log Report to send." >> $call_3h_log
@@ -532,7 +533,8 @@ do
             
             email_subject=$(echo "[UR] Report")
         
-            prev_err=$(echo $log_directory$file_id"ur_err_"$prev_date"_"$prd_prev"_"$prd_start".log")rpt_3h_log
+            # prev_err=$(echo $log_directory$file_id"ur_err_"$prev_date"_"$prd_prev"_"$prd_start".log")rpt_3h_log
+            prev_err=$(echo $log_directory$file_id"errors_"$prev_date"_"$prd_prev"_"$prd_start".log")rpt_3h_log
                     
             # Send the email
             if [ ! -e "$prev_err" ]; then
